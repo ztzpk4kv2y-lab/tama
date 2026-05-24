@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>アンケートツール</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      background: linear-gradient(135deg, #f0f4ff 0%, #fdf2f8 100%);
+      font-family: 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+      padding: 20px;
+    }
+    .hidden { display: none !important; }
+    .btn { border: none; border-radius: 10px; cursor: pointer; font-family: inherit; font-weight: 600; transition: opacity .15s; }
+    .btn:hover { opacity: .82; }
+    .btn-primary { background: linear-gradient(135deg, #6366F1, #8B5CF6); color: #fff; padding: 12px 24px; font-size: 15px; }
+    .btn-sm { padding: 6px 14px; font-size: 13px; }
+    .btn-danger { background: #FEF2F2; color: #EF4444; border: 1px solid #FECACA; }
+    .btn-gray { background: #F3F4F6; color: #374151; border: 1px solid #E5E7EB; }
+    .btn-green { background: #ECFDF5; color: #059669; border: 1px solid #6EE7B7; }
+
+    /* トップバー */
+    .top-bar { display: flex; align-items: center; justify-content: space-between; max-width: 520px; margin: 0 auto 16px; }
+    .top-bar h1 { font-size: 16px; color: #374151; font-weight: 700; }
+
+    /* カード */
+    .card { background: #fff; border-radius: 20px; box-shadow: 0 8px 40px rgba(0,0,0,0.10); width: 100%; max-width: 520px; margin: 0 auto; overflow: hidden; }
+    .card-header { display: flex; align-items: center; gap: 12px; padding: 20px 24px 16px; border-bottom: 1px solid #F3F4F6; }
+    .card-icon { font-size: 30px; }
+    .card-title { font-size: 17px; font-weight: 700; color: #111827; }
+    .card-sub { font-size: 12px; color: #9CA3AF; margin-top: 2px; }
+
+    /* タブ */
+    .tabs { display: flex; border-bottom: 1px solid #F3F4F6; }
+    .tab { flex: 1; padding: 12px; background: none; border: none; font-size: 14px; color: #9CA3AF; cursor: pointer; border-bottom: 2px solid transparent; font-weight: 500; font-family: inherit; }
+    .tab.active { color: #6366F1; border-bottom: 2px solid #6366F1; }
+
+    /* 回答エリア */
+    .body { padding: 24px; }
+    .q-nav { display: flex; gap: 6px; margin-bottom: 18px; flex-wrap: wrap; }
+    .q-dot { width: 28px; height: 28px; border-radius: 50%; border: 2px solid #E5E7EB; background: #fff; font-size: 12px; font-weight: 700; color: #9CA3AF; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+    .q-dot.current { border-color: #6366F1; color: #6366F1; }
+    .q-dot.done { background: #6366F1; border-color: #6366F1; color: #fff; }
+    .question-text { font-size: 17px; font-weight: 600; color: #1F2937; line-height: 1.6; margin-bottom: 6px; }
+    .question-desc { font-size: 13px; color: #6B7280; margin-bottom: 16px; }
+    .q-type-badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; margin-bottom: 14px; }
+    .badge-choice { background: #EEF2FF; color: #6366F1; }
+    .badge-text { background: #ECFDF5; color: #059669; }
+
+    /* 選択肢 */
+    .options { display: flex; flex-direction: column; gap: 10px; }
+    .opt-btn { display: flex; align-items: center; gap: 12px; padding: 13px 16px; border: 2px solid #E5E7EB; border-radius: 12px; cursor: pointer; text-align: left; width: 100%; background: #fff; font-family: inherit; transition: all .15s; }
+    .opt-emoji { font-size: 22px; min-width: 28px; }
+    .opt-label { font-size: 14px; font-weight: 600; color: #374151; flex: 1; }
+    .opt-check { font-weight: 700; display: none; }
+
+    /* 記入式 */
+    .text-answer-wrap { display: flex; flex-direction: column; gap: 10px; }
+    .text-answer {
+      width: 100%; padding: 14px 16px; border: 2px solid #E5E7EB; border-radius: 12px;
+      font-size: 14px; font-family: inherit; outline: none; transition: border-color .2s;
+      resize: vertical; min-height: 100px; color: #1F2937;
+    }
+    .text-answer:focus { border-color: #6366F1; box-shadow: 0 0 0 3px #6366F133; }
+    .text-answer-short {
+      width: 100%; padding: 13px 16px; border: 2px solid #E5E7EB; border-radius: 12px;
+      font-size: 14px; font-family: inherit; outline: none; transition: border-color .2s; color: #1F2937;
+    }
+    .text-answer-short:focus { border-color: #6366F1; box-shadow: 0 0 0 3px #6366F133; }
+    .char-count { font-size: 12px; color: #9CA3AF; text-align: right; }
+
+    /* 送信ボタン */
+    .submit-btn { margin-top: 20px; width: 100%; padding: 14px; background: linear-gradient(135deg, #6366F1, #8B5CF6); color: #fff; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; opacity: 0.4; font-family: inherit; transition: opacity .15s; }
+    .submit-btn.ready { opacity: 1; }
+
+    /* サンクス */
+    .thanks { text-align: center; padding: 32px 24px; }
+    .thanks-icon { font-size: 48px; margin-bottom: 12px; }
+    .thanks-title { font-size: 20px; font-weight: 700; color: #111827; margin-bottom: 8px; }
+    .thanks-sub { font-size: 14px; color: #6B7280; margin-bottom: 20px; }
+
+    /* 集計 */
+    .total-badge { display: inline-block; background: #EEF2FF; color: #6366F1; border-radius: 20px; padding: 4px 14px; font-size: 13px; font-weight: 700; margin-bottom: 20px; }
+    .result-section { margin-bottom: 28px; padding-bottom: 20px; border-bottom: 1px solid #F3F4F6; }
+    .result-section:last-child { border-bottom: none; }
+    .result-q { font-size: 14px; font-weight: 700; color: #374151; margin-bottom: 12px; }
+    .result-row { margin-bottom: 12px; }
+    .result-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+    .result-emoji { font-size: 18px; }
+    .result-label { flex: 1; font-size: 13px; font-weight: 600; color: #374151; }
+    .result-count { font-size: 13px; font-weight: 700; }
+    .bar-bg { height: 9px; background: #F3F4F6; border-radius: 99px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 99px; transition: width 0.6s ease; }
+
+    /* 記入式集計 */
+    .text-responses { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+    .text-response-item { background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #374151; line-height: 1.5; }
+    .text-response-num { font-size: 11px; color: #9CA3AF; margin-bottom: 4px; }
+    .no-response { font-size: 13px; color: #9CA3AF; font-style: italic; }
+
+    /* 管理画面 */
+    .admin-wrap { max-width: 520px; margin: 0 auto; }
+    .admin-card { background: #fff; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); padding: 20px; margin-bottom: 16px; }
+    .admin-card h2 { font-size: 15px; font-weight: 700; color: #111827; margin-bottom: 16px; }
+    .field-row { margin-bottom: 12px; }
+    .field-label { font-size: 12px; font-weight: 600; color: #6B7280; margin-bottom: 4px; }
+    input[type=text], textarea { width: 100%; padding: 9px 12px; border: 1.5px solid #E5E7EB; border-radius: 8px; font-size: 14px; font-family: inherit; outline: none; transition: border-color .15s; }
+    input[type=text]:focus, textarea:focus { border-color: #6366F1; }
+    textarea { resize: vertical; min-height: 60px; }
+    .q-block { border: 1.5px solid #E5E7EB; border-radius: 12px; padding: 16px; margin-bottom: 12px; }
+    .q-block-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .q-block-title { font-size: 13px; font-weight: 700; color: #374151; }
+
+    /* 質問タイプ切替 */
+    .type-switcher { display: flex; gap: 6px; margin-bottom: 12px; }
+    .type-btn { padding: 6px 14px; border-radius: 8px; border: 1.5px solid #E5E7EB; background: #fff; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; color: #6B7280; }
+    .type-btn.active { background: #EEF2FF; border-color: #6366F1; color: #6366F1; }
+
+    /* 選択肢エディタ */
+    .opt-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .opt-row input { flex: 1; }
+    .opt-emoji-input { width: 52px !important; flex: none !important; text-align: center; }
+    .add-opt-btn { background: none; border: 1.5px dashed #C4B5FD; color: #8B5CF6; border-radius: 8px; padding: 7px 12px; font-size: 13px; cursor: pointer; font-family: inherit; width: 100%; margin-top: 4px; }
+    .add-q-btn { background: none; border: 2px dashed #C4B5FD; color: #6366F1; border-radius: 12px; padding: 12px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; width: 100%; margin-bottom: 16px; }
+    .pass-row { display: flex; gap: 8px; align-items: center; }
+    .pass-row input { flex: 1; }
+
+    /* テキスト設定 */
+    .text-cfg { background: #F9FAFB; border-radius: 8px; padding: 12px; }
+    .text-cfg label { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #374151; cursor: pointer; }
+    .subtype-row { display: flex; gap: 8px; margin-bottom: 8px; }
+    .subtype-btn { flex: 1; padding: 7px; border-radius: 8px; border: 1.5px solid #E5E7EB; background: #fff; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; color: #6B7280; text-align: center; }
+    .subtype-btn.active { background: #ECFDF5; border-color: #10B981; color: #059669; }
+  </style>
+</head>
+<body>
+
+<!-- トップバー -->
+<div class="top-bar" id="top-bar">
+  <h1 id="top-title">📋 アンケート</h1>
+  <button class="btn btn-gray btn-sm" onclick="goAdmin()">⚙️ 管理</button>
+</div>
+
+<!-- アンケートカード -->
+<div class="card" id="survey-card">
+  <div class="card-header">
+    <span class="card-icon" id="survey-icon">📋</span>
+    <div>
+      <div class="card-title" id="survey-title">アンケート</div>
+      <div class="card-sub">匿名・アカウント不要</div>
+    </div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" id="tab-answer" onclick="showTab('answer')">回答</button>
+    <button class="tab" id="tab-results" onclick="showTab('results')">集計</button>
+  </div>
+
+  <!-- 回答ペイン -->
+  <div id="pane-answer" class="body">
+    <div class="q-nav" id="q-nav"></div>
+    <div class="question-text" id="q-text"></div>
+    <div class="question-desc" id="q-desc"></div>
+    <div id="q-type-badge"></div>
+    <div id="q-input-area"></div>
+    <button class="submit-btn" id="submit-btn" onclick="nextOrSubmit()">次へ →</button>
+  </div>
+
+  <!-- サンクス -->
+  <div id="pane-thanks" class="hidden">
+    <div class="thanks">
+      <div class="thanks-icon">🎉</div>
+      <div class="thanks-title">回答ありがとうございます！</div>
+      <div class="thanks-sub">集計タブで結果を確認できます</div>
+      <button class="btn btn-primary" onclick="showTab('results')">集計を見る →</button>
+    </div>
+  </div>
+
+  <!-- 集計ペイン -->
+  <div id="pane-results" class="hidden body">
+    <div id="admin-result-badge"></div>
+    <div class="total-badge" id="res-total">総回答数：0 件</div>
+    <div id="res-body"></div>
+    <button class="btn btn-danger btn-sm" onclick="resetData()" style="margin-top:8px">🗑 リセット</button>
+  </div>
+</div>
+
+<!-- 管理画面 -->
+<div id="admin-screen" class="admin-wrap hidden">
+  <div id="admin-login" class="admin-card">
+    <h2>🔐 管理者ログイン</h2>
+    <div class="field-row">
+      <div class="field-label">パスワード</div>
+      <div class="pass-row">
+        <input type="text" id="pass-input" placeholder="パスワードを入力" onkeydown="if(event.key==='Enter')checkPass()">
+        <button class="btn btn-primary btn-sm" onclick="checkPass()">ログイン</button>
+      </div>
+      <div style="font-size:12px;color:#9CA3AF;margin-top:6px">初期パスワード: <b>admin</b></div>
+    </div>
+  </div>
+
+  <div id="admin-panel" class="hidden">
+    <div class="admin-card">
+      <h2>📝 アンケート設定</h2>
+      <div class="field-row">
+        <div class="field-label">タイトル</div>
+        <input type="text" id="cfg-title" placeholder="アンケートのタイトル">
+      </div>
+      <div class="field-row">
+        <div class="field-label">アイコン（絵文字）</div>
+        <input type="text" id="cfg-icon" placeholder="例: 📋" style="width:80px">
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <h2>❓ 質問一覧</h2>
+      <div id="q-editor-list"></div>
+      <button class="add-q-btn" onclick="addQuestion()">＋ 質問を追加</button>
+      <button class="btn btn-primary" style="width:100%" onclick="saveAndNotify()">💾 保存して反映</button>
+    </div>
+
+    <div class="admin-card">
+      <h2>🔑 パスワード変更</h2>
+      <div class="pass-row">
+        <input type="text" id="new-pass" placeholder="新しいパスワード">
+        <button class="btn btn-green btn-sm" onclick="changePass()">変更</button>
+      </div>
+    </div>
+
+    <div style="text-align:center;margin-bottom:20px">
+      <button class="btn btn-primary btn-sm" onclick="viewResultsAsAdmin()" style="margin-bottom:10px;width:100%">📊 記入式回答を含む集計を見る</button>
+      <button class="btn btn-gray btn-sm" onclick="exitAdmin()">← アンケートに戻る</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== ストレージ =====
+const KEYS = { config: "aq-config2", results: "aq-results2", pass: "aq-pass" };
+let isAdminLoggedIn = false;
+
+function loadConfig() {
+  try { const r = localStorage.getItem(KEYS.config); if (r) return JSON.parse(r); } catch {}
+  return defaultConfig();
+}
+function saveConfigData(cfg) { localStorage.setItem(KEYS.config, JSON.stringify(cfg)); }
+function loadResults() {
+  try { const r = localStorage.getItem(KEYS.results); if (r) return JSON.parse(r); } catch {}
+  return { total: 0, answers: {} };
+}
+function saveResults(d) { localStorage.setItem(KEYS.results, JSON.stringify(d)); }
+function getPass() { return localStorage.getItem(KEYS.pass) || "admin"; }
+
+function defaultConfig() {
+  return {
+    title: "ゴーグルアンケート", icon: "🥽",
+    questions: [
+      {
+        id: "q1", type: "choice",
+        text: "ゴーグルは男女別で必要だと思いますか？", desc: "",
+        options: [
+          { emoji: "🧑", label: "男性用が必要", color: "#3B82F6", bg: "#EFF6FF" },
+          { emoji: "👩", label: "女性用が必要", color: "#EC4899", bg: "#FDF2F8" },
+          { emoji: "🥽", label: "どちらでもない／共用でよい", color: "#8B5CF6", bg: "#F5F3FF" }
+        ]
+      },
+      {
+        id: "q2", type: "text", subtype: "long",
+        text: "その理由や意見を自由にお書きください。", desc: "任意回答", required: false
+      }
+    ]
+  };
+}
+
+// ===== 回答ロジック =====
+let config = loadConfig();
+let currentQ = 0;
+let session = {}; // { qId: value }
+let voted = !!sessionStorage.getItem("aq-voted2");
+
+const COLORS = [
+  { color: "#3B82F6", bg: "#EFF6FF" }, { color: "#EC4899", bg: "#FDF2F8" },
+  { color: "#8B5CF6", bg: "#F5F3FF" }, { color: "#10B981", bg: "#ECFDF5" },
+  { color: "#F59E0B", bg: "#FFFBEB" }, { color: "#EF4444", bg: "#FEF2F2" },
+];
+
+function initSurvey() {
+  config = loadConfig();
+  document.getElementById("survey-title").textContent = config.title;
+  document.getElementById("survey-icon").textContent = config.icon;
+  document.getElementById("top-title").textContent = "📋 " + config.title;
+  if (voted) { showTab("results"); return; }
+  currentQ = 0; session = {};
+  renderQuestion(); showTab("answer");
+}
+
+function renderQuestion() {
+  const qs = config.questions;
+  const q = qs[currentQ];
+  const isLast = currentQ === qs.length - 1;
+
+  // ナビ
+  document.getElementById("q-nav").innerHTML = qs.map((qi, i) => {
+    let cls = "q-dot";
+    if (i === currentQ) cls += " current";
+    else if (session[qs[i].id] !== undefined) cls += " done";
+    return `<div class="${cls}">${i + 1}</div>`;
+  }).join("");
+
+  document.getElementById("q-text").textContent = q.text;
+  document.getElementById("q-desc").textContent = q.desc || "";
+
+  // バッジ
+  const badge = document.getElementById("q-type-badge");
+  if (q.type === "text") {
+    badge.innerHTML = `<span class="q-type-badge badge-text">✏️ 記入式${q.required === false ? "（任意）" : ""}</span>`;
+  } else {
+    badge.innerHTML = `<span class="q-type-badge badge-choice">🔘 選択式</span>`;
+  }
+
+  // 入力エリア
+  const area = document.getElementById("q-input-area");
+  area.innerHTML = "";
+  const sb = document.getElementById("submit-btn");
+  sb.classList.remove("ready");
+  sb.textContent = isLast ? "回答する" : "次へ →";
+
+  if (q.type === "choice") {
+    const wrap = document.createElement("div");
+    wrap.className = "options";
+    q.options.forEach((opt, i) => {
+      const btn = document.createElement("button");
+      btn.className = "opt-btn";
+      btn.innerHTML = `<span class="opt-emoji">${opt.emoji}</span><span class="opt-label">${opt.label}</span><span class="opt-check">✔</span>`;
+      if (session[q.id] === i) applySelected(btn, opt);
+      btn.onclick = () => {
+        wrap.querySelectorAll(".opt-btn").forEach(b => clearSelected(b));
+        applySelected(btn, opt);
+        session[q.id] = i;
+        sb.classList.add("ready");
+      };
+      wrap.appendChild(btn);
+    });
+    area.appendChild(wrap);
+    if (session[q.id] !== undefined) sb.classList.add("ready");
+
+  } else if (q.type === "text") {
+    const wrap = document.createElement("div");
+    wrap.className = "text-answer-wrap";
+    const savedVal = session[q.id] || "";
+
+    if (q.subtype === "short") {
+      const inp = document.createElement("input");
+      inp.type = "text"; inp.className = "text-answer-short";
+      inp.placeholder = "ここに入力してください"; inp.value = savedVal;
+      inp.oninput = () => {
+        session[q.id] = inp.value;
+        sb.classList.toggle("ready", !!inp.value || q.required === false);
+      };
+      wrap.appendChild(inp);
+    } else {
+      const ta = document.createElement("textarea");
+      ta.className = "text-answer"; ta.placeholder = "ここに入力してください"; ta.value = savedVal;
+      const cc = document.createElement("div");
+      cc.className = "char-count"; cc.textContent = `${savedVal.length} 文字`;
+      ta.oninput = () => {
+        session[q.id] = ta.value;
+        cc.textContent = `${ta.value.length} 文字`;
+        sb.classList.toggle("ready", !!ta.value || q.required === false);
+      };
+      wrap.appendChild(ta); wrap.appendChild(cc);
+    }
+    area.appendChild(wrap);
+    // 任意の場合は最初からready
+    if (q.required === false || savedVal) sb.classList.add("ready");
+  }
+}
+
+function applySelected(btn, opt) {
+  btn.style.background = opt.bg; btn.style.borderColor = opt.color;
+  btn.style.boxShadow = `0 0 0 3px ${opt.color}33`;
+  btn.querySelector(".opt-check").style.display = "inline";
+  btn.querySelector(".opt-check").style.color = opt.color;
+  btn.querySelector(".opt-label").style.color = opt.color;
+}
+function clearSelected(btn) {
+  btn.style.background = "#fff"; btn.style.borderColor = "#E5E7EB"; btn.style.boxShadow = "none";
+  btn.querySelector(".opt-check").style.display = "none";
+  btn.querySelector(".opt-label").style.color = "#374151";
+}
+
+function nextOrSubmit() {
+  const q = config.questions[currentQ];
+  // 必須チェック
+  if (q.type === "choice" && session[q.id] === undefined) return;
+  if (q.type === "text" && q.required !== false && !session[q.id]) return;
+
+  if (currentQ < config.questions.length - 1) {
+    currentQ++; renderQuestion();
+  } else {
+    submitAll();
+  }
+}
+
+function submitAll() {
+  const data = loadResults();
+  data.total += 1;
+  config.questions.forEach(q => {
+    if (q.type === "choice") {
+      if (!data.answers[q.id]) data.answers[q.id] = { type: "choice", counts: Array(q.options.length).fill(0) };
+      const idx = session[q.id];
+      if (idx !== undefined) data.answers[q.id].counts[idx]++;
+    } else if (q.type === "text") {
+      if (!data.answers[q.id]) data.answers[q.id] = { type: "text", responses: [] };
+      const val = session[q.id];
+      if (val && val.trim()) data.answers[q.id].responses.push(val.trim());
+    }
+  });
+  saveResults(data);
+  sessionStorage.setItem("aq-voted2", "1");
+  voted = true;
+  document.getElementById("pane-answer").classList.add("hidden");
+  document.getElementById("pane-thanks").classList.remove("hidden");
+}
+
+// ===== 集計 =====
+function renderResults() {
+  const data = loadResults();
+  document.getElementById("res-total").textContent = `総回答数：${data.total} 件`;
+
+  // 管理者バッジ
+  const badge = document.getElementById("admin-result-badge");
+  if (isAdminLoggedIn) {
+    badge.innerHTML = `<div style="display:flex;align-items:center;gap:8px;background:#ECFDF5;border:1px solid #6EE7B7;border-radius:10px;padding:8px 14px;margin-bottom:16px;font-size:13px;font-weight:600;color:#059669">🔓 管理者として閲覧中 — 記入式の回答も表示されています</div>`;
+  } else {
+    badge.innerHTML = "";
+  }
+  const body = document.getElementById("res-body");
+  body.innerHTML = "";
+
+  config.questions.forEach((q, qi) => {
+    const sec = document.createElement("div");
+    sec.className = "result-section";
+    sec.innerHTML = `<div class="result-q">Q${qi + 1}. ${q.text}</div>`;
+
+    const ans = data.answers[q.id];
+
+    if (q.type === "choice") {
+      const counts = (ans && ans.counts) ? ans.counts : Array(q.options.length).fill(0);
+      const total = counts.reduce((a, b) => a + b, 0);
+      q.options.forEach((opt, i) => {
+        const cnt = counts[i] || 0;
+        const pct = total === 0 ? 0 : Math.round(cnt / total * 100);
+        sec.innerHTML += `
+          <div class="result-row">
+            <div class="result-meta">
+              <span class="result-emoji">${opt.emoji}</span>
+              <span class="result-label">${opt.label}</span>
+              <span class="result-count" style="color:${opt.color}">${cnt} 票 (${pct}%)</span>
+            </div>
+            <div class="bar-bg"><div class="bar-fill" style="background:${opt.color};width:${pct}%"></div></div>
+          </div>`;
+      });
+
+    } else if (q.type === "text") {
+      const responses = (ans && ans.responses) ? ans.responses : [];
+      if (!isAdminLoggedIn) {
+        // 一般ユーザーには件数だけ表示
+        sec.innerHTML += `
+          <div style="display:flex;align-items:center;gap:10px;background:#F9FAFB;border:1px solid #E5E7EB;border-radius:10px;padding:12px 16px;">
+            <span style="font-size:20px">🔒</span>
+            <div>
+              <div style="font-size:13px;font-weight:600;color:#374151">${responses.length} 件の回答あり</div>
+              <div style="font-size:12px;color:#9CA3AF;margin-top:2px">回答内容は管理者のみ閲覧できます</div>
+            </div>
+          </div>`;
+      } else {
+        // 管理者には全回答を表示
+        if (responses.length === 0) {
+          sec.innerHTML += `<div class="no-response">まだ回答がありません</div>`;
+        } else {
+          sec.innerHTML += `<div style="font-size:12px;color:#6B7280;margin-bottom:8px">${responses.length} 件の回答</div>`;
+          const wrap = document.createElement("div");
+          wrap.className = "text-responses";
+          responses.forEach((r, i) => {
+            const item = document.createElement("div");
+            item.className = "text-response-item";
+            item.innerHTML = `<div class="text-response-num"># ${i + 1}</div>${escapeHtml(r)}`;
+            wrap.appendChild(item);
+          });
+          sec.appendChild(wrap);
+          return;
+        }
+      }
+    body.appendChild(sec);
+  });
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\n/g,"<br>");
+}
+
+function resetData() {
+  if (!confirm("集計データをリセットしますか？")) return;
+  saveResults({ total: 0, answers: {} });
+  sessionStorage.removeItem("aq-voted2");
+  voted = false; session = {}; currentQ = 0;
+  renderResults(); showTab("answer"); renderQuestion();
+}
+
+// ===== タブ =====
+function showTab(name) {
+  ["answer","thanks","results"].forEach(p => document.getElementById("pane-"+p).classList.add("hidden"));
+  ["answer","results"].forEach(t => document.getElementById("tab-"+t).classList.remove("active"));
+  if (name === "answer") {
+    document.getElementById(voted ? "pane-thanks" : "pane-answer").classList.remove("hidden");
+    document.getElementById("tab-answer").classList.add("active");
+  } else {
+    document.getElementById("pane-results").classList.remove("hidden");
+    document.getElementById("tab-results").classList.add("active");
+    renderResults();
+  }
+}
+
+// ===== 管理画面 =====
+function goAdmin() {
+  document.getElementById("survey-card").classList.add("hidden");
+  document.getElementById("top-bar").classList.add("hidden");
+  document.getElementById("admin-screen").classList.remove("hidden");
+  document.getElementById("admin-login").classList.remove("hidden");
+  document.getElementById("admin-panel").classList.add("hidden");
+  document.getElementById("pass-input").value = "";
+}
+function checkPass() {
+  if (document.getElementById("pass-input").value === getPass()) {
+    isAdminLoggedIn = true;
+    document.getElementById("admin-login").classList.add("hidden");
+    document.getElementById("admin-panel").classList.remove("hidden");
+    renderEditor();
+  } else { alert("パスワードが違います"); }
+}
+function exitAdmin() {
+  isAdminLoggedIn = false;
+  document.getElementById("admin-screen").classList.add("hidden");
+  document.getElementById("survey-card").classList.remove("hidden");
+  document.getElementById("top-bar").classList.remove("hidden");
+  initSurvey();
+}
+function changePass() {
+  const v = document.getElementById("new-pass").value.trim();
+  if (!v) return alert("パスワードを入力してください");
+  localStorage.setItem(KEYS.pass, v);
+  alert("パスワードを変更しました");
+  document.getElementById("new-pass").value = "";
+}
+
+// ===== エディタ =====
+function renderEditor() {
+  const cfg = loadConfig();
+  document.getElementById("cfg-title").value = cfg.title;
+  document.getElementById("cfg-icon").value = cfg.icon;
+  const list = document.getElementById("q-editor-list");
+  list.innerHTML = "";
+  cfg.questions.forEach((q, qi) => renderQBlock(q, qi, list, cfg.questions.length));
+}
+
+function renderQBlock(q, qi, container, total) {
+  const block = document.createElement("div");
+  block.className = "q-block"; block.dataset.qid = q.id;
+  block.dataset.qtype = q.type || "choice";
+
+  const isText = q.type === "text";
+
+  block.innerHTML = `
+    <div class="q-block-header">
+      <span class="q-block-title">質問 ${qi + 1}</span>
+      <div style="display:flex;gap:6px">
+        ${qi > 0 ? `<button class="btn btn-gray btn-sm" onclick="moveQ('${q.id}',-1)">↑</button>` : ""}
+        ${qi < total - 1 ? `<button class="btn btn-gray btn-sm" onclick="moveQ('${q.id}',1)">↓</button>` : ""}
+        ${total > 1 ? `<button class="btn btn-danger btn-sm" onclick="removeQ('${q.id}')">削除</button>` : ""}
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field-label">質問タイプ</div>
+      <div class="type-switcher">
+        <button class="type-btn ${!isText ? 'active' : ''}" onclick="switchType('${q.id}','choice',this)">🔘 選択式</button>
+        <button class="type-btn ${isText ? 'active' : ''}" onclick="switchType('${q.id}','text',this)">✏️ 記入式</button>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field-label">質問文</div>
+      <textarea class="q-text-input" placeholder="質問を入力">${q.text}</textarea>
+    </div>
+    <div class="field-row">
+      <div class="field-label">補足説明（任意）</div>
+      <input type="text" class="q-desc-input" placeholder="補足テキスト" value="${q.desc || ""}">
+    </div>
+    <div class="q-type-specific">
+      ${isText ? renderTextCfg(q) : renderChoiceCfg(q)}
+    </div>`;
+  container.appendChild(block);
+}
+
+function renderChoiceCfg(q) {
+  const opts = (q.options || []).map((opt, oi) => `
+    <div class="opt-row" data-oi="${oi}">
+      <input type="text" class="opt-emoji-input" value="${opt.emoji}" placeholder="🔵" maxlength="2">
+      <input type="text" class="opt-label-input" value="${opt.label}" placeholder="選択肢のテキスト">
+      <button class="btn btn-danger btn-sm" style="white-space:nowrap" onclick="this.closest('.opt-row').remove()">✕</button>
+    </div>`).join("");
+  return `
+    <div class="field-label" style="margin-bottom:6px">選択肢</div>
+    <div class="opt-editor-list">${opts}</div>
+    <button class="add-opt-btn" onclick="addOption('${q.id}')">＋ 選択肢を追加</button>`;
+}
+
+function renderTextCfg(q) {
+  const isShort = q.subtype === "short";
+  const isRequired = q.required !== false;
+  return `
+    <div class="text-cfg">
+      <div class="field-label" style="margin-bottom:8px">入力タイプ</div>
+      <div class="subtype-row">
+        <button class="subtype-btn ${isShort ? '' : 'active'}" onclick="setSubtype(this,'long')">📝 長文（複数行）</button>
+        <button class="subtype-btn ${isShort ? 'active' : ''}" onclick="setSubtype(this,'short')">✏️ 短文（1行）</button>
+      </div>
+      <input type="hidden" class="q-subtype" value="${isShort ? 'short' : 'long'}">
+      <label style="margin-top:8px;display:flex;align-items:center;gap:8px;font-size:13px;color:#374151;cursor:pointer">
+        <input type="checkbox" class="q-required" ${isRequired ? 'checked' : ''}> 必須回答にする
+      </label>
+    </div>`;
+}
+
+function setSubtype(btn, val) {
+  const cfg = btn.closest(".text-cfg");
+  cfg.querySelectorAll(".subtype-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  cfg.querySelector(".q-subtype").value = val;
+}
+
+function switchType(qid, newType, btn) {
+  const block = document.querySelector(`.q-block[data-qid="${qid}"]`);
+  block.dataset.qtype = newType;
+  block.querySelectorAll(".type-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  const cfg = loadConfig();
+  const q = cfg.questions.find(x => x.id === qid) || { id: qid, type: newType, options: [] };
+  q.type = newType;
+  const specific = block.querySelector(".q-type-specific");
+  specific.innerHTML = newType === "text" ? renderTextCfg(q) : renderChoiceCfg(q);
+}
+
+function addOption(qid) {
+  const block = document.querySelector(`.q-block[data-qid="${qid}"]`);
+  const list = block.querySelector(".opt-editor-list");
+  const oi = list.querySelectorAll(".opt-row").length;
+  const div = document.createElement("div");
+  div.className = "opt-row"; div.dataset.oi = oi;
+  div.innerHTML = `
+    <input type="text" class="opt-emoji-input" value="🔵" maxlength="2">
+    <input type="text" class="opt-label-input" placeholder="選択肢のテキスト">
+    <button class="btn btn-danger btn-sm" style="white-space:nowrap" onclick="this.closest('.opt-row').remove()">✕</button>`;
+  list.appendChild(div);
+}
+
+function addQuestion() {
+  const cfg = buildFromEditor();
+  cfg.questions.push({ id: "q" + Date.now(), type: "choice", text: "", desc: "", options: [
+    { emoji: "⭕", label: "はい", color: "#3B82F6", bg: "#EFF6FF" },
+    { emoji: "❌", label: "いいえ", color: "#EF4444", bg: "#FEF2F2" }
+  ]});
+  saveConfigData(cfg); renderEditor();
+}
+
+function removeQ(qid) {
+  if (!confirm("この質問を削除しますか？")) return;
+  const cfg = buildFromEditor();
+  cfg.questions = cfg.questions.filter(q => q.id !== qid);
+  saveConfigData(cfg); renderEditor();
+}
+
+function moveQ(qid, dir) {
+  const cfg = buildFromEditor();
+  const idx = cfg.questions.findIndex(q => q.id === qid);
+  const to = idx + dir;
+  if (to < 0 || to >= cfg.questions.length) return;
+  [cfg.questions[idx], cfg.questions[to]] = [cfg.questions[to], cfg.questions[idx]];
+  saveConfigData(cfg); renderEditor();
+}
+
+function buildFromEditor() {
+  const cfg = loadConfig();
+  cfg.title = document.getElementById("cfg-title").value || "アンケート";
+  cfg.icon = document.getElementById("cfg-icon").value || "📋";
+  const blocks = document.querySelectorAll(".q-block");
+  cfg.questions = Array.from(blocks).map((block, qi) => {
+    const qid = block.dataset.qid;
+    const qtype = block.dataset.qtype || "choice";
+    const existing = cfg.questions.find(q => q.id === qid) || {};
+    const base = {
+      id: qid, type: qtype,
+      text: block.querySelector(".q-text-input").value,
+      desc: block.querySelector(".q-desc-input").value,
+    };
+    if (qtype === "choice") {
+      base.options = Array.from(block.querySelectorAll(".opt-row")).map((row, oi) => {
+        const c = COLORS[oi % COLORS.length];
+        const prev = (existing.options && existing.options[oi]) ? existing.options[oi] : {};
+        return {
+          emoji: row.querySelector(".opt-emoji-input").value || "🔵",
+          label: row.querySelector(".opt-label-input").value || "選択肢",
+          color: prev.color || c.color, bg: prev.bg || c.bg
+        };
+      });
+    } else {
+      const subtypeEl = block.querySelector(".q-subtype");
+      const reqEl = block.querySelector(".q-required");
+      base.subtype = subtypeEl ? subtypeEl.value : "long";
+      base.required = reqEl ? reqEl.checked : false;
+    }
+    return base;
+  });
+  return cfg;
+}
+
+function viewResultsAsAdmin() {
+  document.getElementById("admin-screen").classList.add("hidden");
+  document.getElementById("survey-card").classList.remove("hidden");
+  document.getElementById("top-bar").classList.remove("hidden");
+  config = loadConfig();
+  document.getElementById("survey-title").textContent = config.title;
+  document.getElementById("survey-icon").textContent = config.icon;
+  document.getElementById("top-title").textContent = "📋 " + config.title;
+  showTab("results");
+}
+
+function saveAndNotify() {
+  saveConfigData(buildFromEditor());
+  alert("✅ 保存しました！");
+}
+
+// ===== 起動 =====
+initSurvey();
+</script>
+</body>
+</html>
